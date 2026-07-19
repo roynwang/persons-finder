@@ -68,6 +68,14 @@ class PersonsServiceImplTest {
     }
 
     @Test
+    fun `findNearby delegates to the locations service`() {
+        val nearby = listOf(NearbyPerson(personId = 3, distanceKm = 0.5))
+        `when`(locationsService.findAround(1.0, 2.0, 10.0)).thenReturn(nearby)
+
+        assertEquals(nearby, service.findNearby(latitude = 1.0, longitude = 2.0, radiusKm = 10.0))
+    }
+
+    @Test
     fun `updateLocation throws for an unknown person and writes nothing`() {
         `when`(personRepository.findById(99)).thenReturn(Optional.empty())
 
