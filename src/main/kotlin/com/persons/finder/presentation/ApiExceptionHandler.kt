@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class ApiExceptionHandler {
@@ -43,6 +44,16 @@ class ApiExceptionHandler {
         } else {
             mapOf("error" to listOf("malformed request body"))
         }
+    }
+
+    /**
+     * A path/query parameter whose value cannot be converted to the declared
+     * type (e.g. a non-numeric person id). Same shape as validation errors.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): Map<String, List<String>> {
+        return mapOf(ex.name to listOf("invalid value for expected type"))
     }
 
     @ExceptionHandler(PersonNotFoundException::class)
