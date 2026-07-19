@@ -37,26 +37,31 @@ bullet points.
 Test each layer at the layer, not through the one above it. Avoid duplicating
 the same assertion across layers — each test should cover what only it can.
 
+Unit tests never touch a database — not even an embedded one (H2). Every
+layer is tested with its collaborators mocked; the e2e suite (real PostgreSQL
+via docker compose) is the only place persistence actually runs.
+
 Test files mirror production classes: same package, one test class per
-production class, named `<Class>Test` (e.g. `LocationRepositoryTest` for
-`LocationRepository`). Don't create combined test files spanning several
+production class, named `<Class>Test` (e.g. `PersonsServiceImplTest` for
+`PersonsServiceImpl`). Don't create combined test files spanning several
 classes.
 
 - **Service** — pure unit tests with mocked repositories (Mockito). Cover logic
   and branches (e.g. not-found throwing), not persistence. See
   `*ServiceImplTest`.
-- **Repository / persistence** — `@DataJpaTest` against Flyway-migrated H2
-  (`@AutoConfigureTestDatabase(replace = NONE)` so the real V1 schema runs).
-  Cover entity↔table mapping, id generation, nullability, and schema
-  constraints (FKs, upsert-by-PK). See `PersonRepositoryTest`,
-  `LocationRepositoryTest`.
-- **Controller / web** — `@SpringBootTest` + MockMvc, `@Transactional` for
-  rollback between tests, one `@Nested` inner class per endpoint. Cover status
-  codes, response body, request validation and error-response shape — plus a
-  light wiring check that a write reached the DB. Do **not** re-assert
-  field-level persistence here (that's the repository test's job), and keep one
-  representative routing test per error path (the error-body logic itself is
+- **Repository / persistence** — no unit tests. Schema constraints, entity↔
+  table mapping, and query correctness (including native SQL) are exercised
+  through the API by the e2e suite against real PostgreSQL, so every repository
+  behavior needs an observable e2e scenario.
+- **Controller / web** — `@WebMvcTest` slice with `@MockBean` services
+  (`@Import(JacksonConfig::class)` to keep strict number coercion), one
+  `@Nested` inner class per endpoint. Cover status codes, response body,
+  request validation, error-response shape, and that the controller delegates
+  to the service with the right arguments. Keep one representative routing
+  test per error path (the error-body logic itself is
   `ApiExceptionHandlerTest`'s job). See `PersonControllerTest`.
 - **E2E** — curl-style Hurl scenarios in `e2e/tests/*.hurl`, one self-contained
-  file per feature; `{{base_url}}` is provided by `e2e/run.sh`. See
-  `e2e/README.md`.
+  file per feature; `{{base_url}}` is provided by `e2e/run.sh`. Owns all
+  persistence coverage. Files share one long-lived database (`make clean`
+  wipes it), so scenarios must tolerate leftover data from other files and
+  earlier runs. See `e2e/README.md`.
