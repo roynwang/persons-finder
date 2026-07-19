@@ -21,7 +21,7 @@ import org.springframework.web.client.RestTemplate
 class BioGeneratorEval {
 
     private val apiKey = System.getenv("GEMINI_API_KEY") ?: ""
-    private val model = System.getenv("GEMINI_MODEL") ?: "gemini-2.5-flash"
+    private val model = System.getenv("GEMINI_MODEL") ?: "gemini-3.1-flash-lite"
     private val baseUrl = System.getenv("GEMINI_BASE_URL") ?: "https://generativelanguage.googleapis.com"
 
     private val restTemplate = RestTemplate(
