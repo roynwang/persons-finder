@@ -1,44 +1,50 @@
 package com.persons.finder.presentation
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.persons.finder.domain.repositories.LocationRepository
-import com.persons.finder.domain.repositories.PersonRepository
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import com.persons.finder.config.JacksonConfig
+import com.persons.finder.data.Person
+import com.persons.finder.domain.services.PersonNotFoundException
+import com.persons.finder.domain.services.PersonsService
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
+import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.data.repository.findByIdOrNull
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
-import org.springframework.transaction.annotation.Transactional
 
 /**
- * Web-layer concerns only, one @Nested class per endpoint: happy path (with a
- * light wiring check) plus ONE representative routing test per distinct error
- * path. Error-body logic lives in ApiExceptionHandlerTest, domain rules in
- * *ServiceImplTest, persistence in *RepositoryTest, full request coverage in
- * the e2e scenarios.
+ * Web-layer concerns only, against a mocked PersonsService, one @Nested class
+ * per endpoint: happy path (status, body, delegation arguments) plus ONE
+ * representative routing test per distinct error path. Error-body logic lives
+ * in ApiExceptionHandlerTest, domain rules in *ServiceImplTest, persistence in
+ * the e2e suite against real PostgreSQL.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@WebMvcTest(PersonController::class)
+@Import(JacksonConfig::class)
 class PersonControllerTest @Autowired constructor(
-    private val mockMvc: MockMvc,
-    private val personRepository: PersonRepository,
-    private val locationRepository: LocationRepository
+    private val mockMvc: MockMvc
 ) {
+
+    @MockBean
+    private lateinit var personsService: PersonsService
 
     @Nested
     inner class CreatePerson {
 
         @Test
-        fun `returns 201 with an id and persists both rows`() {
-            val result = mockMvc.post("/api/v1/persons") {
+        fun `returns 201 with the generated id and delegates the full payload`() {
+            val toCreate = Person(name = "John Doe", jobTitle = "Developer", hobbies = "chess, hiking")
+            `when`(personsService.createWithLocation(toCreate, latitude = -36.8485, longitude = 174.7633))
+                .thenReturn(toCreate.copy(id = 42))
+
+            mockMvc.post("/api/v1/persons") {
                 contentType = MediaType.APPLICATION_JSON
                 content = """
                     {
@@ -50,12 +56,10 @@ class PersonControllerTest @Autowired constructor(
                 """.trimIndent()
             }.andExpect {
                 status { isCreated() }
-                jsonPath("$.id") { isNumber() }
-            }.andReturn()
+                jsonPath("$.id") { value(42) }
+            }
 
-            val id = ObjectMapper().readTree(result.response.contentAsString)["id"].asLong()
-            assertTrue(personRepository.existsById(id), "person row should exist")
-            assertTrue(locationRepository.existsById(id), "location row should exist")
+            verify(personsService).createWithLocation(toCreate, latitude = -36.8485, longitude = 174.7633)
         }
 
         // Routing: MethodArgumentNotValidException -> 400 field map
@@ -68,6 +72,8 @@ class PersonControllerTest @Autowired constructor(
                 status { isBadRequest() }
                 jsonPath("$.name") { exists() }
             }
+
+            verifyNoInteractions(personsService)
         }
 
         // Routing: strict coercion -> HttpMessageNotReadableException -> 400
@@ -88,24 +94,23 @@ class PersonControllerTest @Autowired constructor(
     inner class UpdateLocation {
 
         @Test
-        fun `returns 204 and replaces the stored coordinates`() {
-            val id = createPerson("Mover")
-
-            mockMvc.put("/api/v1/persons/$id/location") {
+        fun `returns 204 and delegates the coordinates`() {
+            mockMvc.put("/api/v1/persons/5/location") {
                 contentType = MediaType.APPLICATION_JSON
                 content = """{ "latitude": 51.5074, "longitude": -0.1278 }"""
             }.andExpect {
                 status { isNoContent() }
             }
 
-            val location = locationRepository.findByIdOrNull(id)!!
-            assertEquals(51.5074, location.latitude)
-            assertEquals(-0.1278, location.longitude)
+            verify(personsService).updateLocation(5, latitude = 51.5074, longitude = -0.1278)
         }
 
         // Routing: PersonNotFoundException -> 404
         @Test
         fun `returns 404 for an unknown person`() {
+            doThrow(PersonNotFoundException(999999))
+                .`when`(personsService).updateLocation(999999, latitude = 0.0, longitude = 0.0)
+
             mockMvc.put("/api/v1/persons/999999/location") {
                 contentType = MediaType.APPLICATION_JSON
                 content = """{ "latitude": 0.0, "longitude": 0.0 }"""
@@ -125,16 +130,10 @@ class PersonControllerTest @Autowired constructor(
                 status { isBadRequest() }
                 jsonPath("$.id") { exists() }
             }
+
+            verifyNoInteractions(personsService)
         }
 
-    }
-
-    private fun createPerson(name: String): Long {
-        val result = mockMvc.post("/api/v1/persons") {
-            contentType = MediaType.APPLICATION_JSON
-            content = """{ "name": "$name", "location": { "latitude": 0.0, "longitude": 0.0 } }"""
-        }.andReturn()
-        return ObjectMapper().readTree(result.response.contentAsString)["id"].asLong()
     }
 
 }

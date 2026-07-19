@@ -28,7 +28,6 @@ dependencies {
 	implementation("org.springdoc:springdoc-openapi-kotlin:1.7.0")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
-	testRuntimeOnly("com.h2database:h2")
 }
 
 tasks.withType<KotlinCompile> {
