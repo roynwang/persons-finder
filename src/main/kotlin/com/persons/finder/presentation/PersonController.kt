@@ -104,12 +104,12 @@ class PersonController(
     @Operation(
         summary = "Find persons near a location",
         description = "Returns persons whose current location is within radiusKm of the query " +
-            "point, closest first, each with their name, job title, and great-circle distance in km."
+            "point, closest first, each with their name, job title, AI bio, and great-circle distance in km."
     )
     @ApiResponse(
         responseCode = "200",
         description = "Persons within the radius, closest first",
-        content = [Content(examples = [ExampleObject(value = """[{"id": 1, "name": "John Doe", "jobTitle": "Developer", "distanceKm": 0.4}]""")])]
+        content = [Content(examples = [ExampleObject(value = """[{"id": 1, "name": "John Doe", "jobTitle": "Developer", "bio": "John maps the tides by day...", "distanceKm": 0.4}]""")])]
     )
     @ApiResponse(
         responseCode = "400",
@@ -120,7 +120,7 @@ class PersonController(
     fun findNearby(@Valid @ParameterObject request: NearbySearchRequest): List<NearbyPersonDto> {
         return personsService
             .findNearby(request.lat!!, request.lon!!, request.radiusKm!!)
-            .map { NearbyPersonDto(it.person.id, it.person.name, it.person.jobTitle, it.distanceKm) }
+            .map { NearbyPersonDto(it.person.id, it.person.name, it.person.jobTitle, it.person.bio, it.distanceKm) }
     }
 
     @Operation(

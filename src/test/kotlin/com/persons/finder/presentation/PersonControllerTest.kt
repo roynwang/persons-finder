@@ -151,8 +151,8 @@ class PersonControllerTest @Autowired constructor(
             `when`(personsService.findNearby(latitude = 10.0, longitude = 10.0, radiusKm = 10.0))
                 .thenReturn(
                     listOf(
-                        NearbyPersonResult(Person(id = 1, name = "Alice", jobTitle = "Developer"), 1.1),
-                        NearbyPersonResult(Person(id = 2, name = "Bob", jobTitle = null), 5.5)
+                        NearbyPersonResult(Person(id = 1, name = "Alice", jobTitle = "Developer", bio = "Alice ships code."), 1.1),
+                        NearbyPersonResult(Person(id = 2, name = "Bob", jobTitle = null, bio = null), 5.5)
                     )
                 )
 
@@ -166,9 +166,11 @@ class PersonControllerTest @Autowired constructor(
                 jsonPath("$[0].id") { value(1) }
                 jsonPath("$[0].name") { value("Alice") }
                 jsonPath("$[0].jobTitle") { value("Developer") }
+                jsonPath("$[0].bio") { value("Alice ships code.") }
                 jsonPath("$[0].distanceKm") { value(1.1) }
                 jsonPath("$[1].id") { value(2) }
                 jsonPath("$[1].name") { value("Bob") }
+                jsonPath("$[1].bio") { value(null) }
             }
         }
 

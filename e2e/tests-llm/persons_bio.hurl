@@ -21,6 +21,14 @@ retry: 30
 retry-interval: 2000
 
 HTTP 200
+[Captures]
+bio: jsonpath "$.bio"
 [Asserts]
 jsonpath "$.bio" isString
 jsonpath "$.bio" matches "\\S"
+
+# The nearby endpoint returns the same bio for people in range.
+GET {{base_url}}/api/v1/persons/nearby?lat=-44.0&lon=-170.0&radiusKm=5
+HTTP 200
+[Asserts]
+jsonpath "$[?(@.id=={{person_id}})].bio" contains {{bio}}
