@@ -1,8 +1,6 @@
 package com.persons.finder.llm
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.persons.finder.data.Person
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -10,9 +8,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.web.client.RestTemplate
@@ -40,6 +35,7 @@ class BioGeneratorEval {
     }
 
     private val generator = BioGeneratorImpl(restTemplate, apiKey, model, baseUrl)
+    private val judge = LlmJudge.fromEnv()
 
     @BeforeAll
     fun requireApiKey() {
@@ -133,7 +129,7 @@ class BioGeneratorEval {
         val bio = generate(person)
 
         assertLooksLikeABio(bio, person.name) // cheap deterministic gate first
-        assertLlmVerifies(
+        judge.assertVerifies(
             actual = bio,
             criteria = listOf(
                 "The bio describes Zora in the third person, using her name or she/her (idioms like \"you can find her\" are fine).",
@@ -143,89 +139,4 @@ class BioGeneratorEval {
             )
         )
     }
-
-    /**
-     * Asks Gemini to judge whether [actual] satisfies every criterion, and
-     * fails with the judge's own reasons for any it rejects. The judge is
-     * pinned to JSON output so the verdicts parse deterministically even though
-     * the wording doesn't.
-     */
-    private fun assertLlmVerifies(actual: String, criteria: List<String>) {
-        val numbered = criteria.mapIndexed { i, c -> "${i + 1}. $c" }.joinToString("\n")
-        val prompt = buildString {
-            appendLine("You are a strict evaluator. For each CRITERION, decide whether the TEXT satisfies it.")
-            appendLine("Judge only what the TEXT actually says; do not assume unstated facts. Be lenient about")
-            appendLine("wording and synonyms, strict about substance.")
-            appendLine("""Respond as JSON: {"results":[{"criterion":"<verbatim>","verdict":"PASS"|"FAIL","reason":"<short>"}]}""")
-            appendLine()
-            appendLine("TEXT:")
-            appendLine("\"\"\"")
-            appendLine(actual)
-            appendLine("\"\"\"")
-            appendLine()
-            appendLine("CRITERIA:")
-            append(numbered)
-        }
-
-        val headers = HttpHeaders().apply {
-            contentType = MediaType.APPLICATION_JSON
-            set("x-goog-api-key", apiKey)
-        }
-        val request = JudgeRequest(
-            contents = listOf(JudgeContent(listOf(JudgePart(prompt)))),
-            generationConfig = JudgeGenerationConfig(responseMimeType = "application/json")
-        )
-        val response = restTemplate.postForObject(
-            "$baseUrl/v1beta/models/$model:generateContent",
-            HttpEntity(request, headers),
-            JudgeResponse::class.java
-        )
-        val json = response?.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            ?: error("judge returned no text")
-
-        val verdicts = jacksonObjectMapper().readValue<JudgeVerdicts>(json).results
-        println("[judge] ${verdicts.joinToString("\n        ") { "${it.verdict}: ${it.criterion} — ${it.reason}" }}")
-
-        assertTrue(
-            verdicts.size >= criteria.size,
-            "judge returned ${verdicts.size} verdicts for ${criteria.size} criteria: $json"
-        )
-        val failures = verdicts.filter { !it.verdict.equals("PASS", ignoreCase = true) }
-        assertTrue(
-            failures.isEmpty(),
-            "LLM judge rejected:\n" + failures.joinToString("\n") { "- ${it.criterion}: ${it.reason}" }
-        )
-    }
 }
-
-// Judge request/response shapes (the generator's own DTOs are private to it).
-private data class JudgeRequest(
-    val contents: List<JudgeContent>,
-    val generationConfig: JudgeGenerationConfig
-)
-
-private data class JudgeContent(val parts: List<JudgePart>)
-private data class JudgePart(val text: String)
-private data class JudgeGenerationConfig(val responseMimeType: String)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-private data class JudgeResponse(val candidates: List<JudgeCandidate> = emptyList())
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-private data class JudgeCandidate(val content: JudgeContentOut? = null)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-private data class JudgeContentOut(val parts: List<JudgePartOut> = emptyList())
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-private data class JudgePartOut(val text: String? = null)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-private data class JudgeVerdicts(val results: List<JudgeVerdict> = emptyList())
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-private data class JudgeVerdict(
-    val criterion: String = "",
-    val verdict: String = "",
-    val reason: String = ""
-)
