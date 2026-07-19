@@ -43,6 +43,9 @@ data class NearbyPersonDto(
     @field:Schema(description = "Job title of the person, if known")
     val jobTitle: String?,
 
+    @field:Schema(description = "AI-generated bio of the person")
+    val bio: String?,
+
     @field:Schema(description = "Great-circle distance from the query point, in kilometres")
     val distanceKm: Double
 )

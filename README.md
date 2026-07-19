@@ -67,13 +67,17 @@ In the `POST /persons` endpoint, you are sending user input to an LLM.
 Prerequisites: Docker running, `brew install hurl`, and a `.env` file (`cp .env.example .env`).
 
 ```bash
-make test   # unit tests (in Docker — no local JDK needed)
-make e2e    # build + start stack, run the Hurl e2e suite
+make test     # unit tests (in Docker — no local JDK needed)
+make e2e      # build + start stack, run the Hurl e2e suite
+make eval     # LLM eval suite against real Gemini (needs GEMINI_API_KEY in .env)
+make e2e-llm  # e2e incl. the real-Gemini bio scenario (needs GEMINI_API_KEY in .env)
 ```
 
 Run `make` to list all targets (`up`, `down`, `logs`, `psql`, ...).
 See [e2e/README.md](e2e/README.md) for how to write new e2e scenarios.
-Both suites also run in CI on every push (`.github/workflows/ci.yml`).
+Unit tests and the plain e2e suite run in CI on every push
+(`.github/workflows/ci.yml`); the LLM suites are local-only and are skipped
+automatically when `GEMINI_API_KEY` is not configured.
 
 ---
 
