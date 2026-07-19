@@ -2,6 +2,7 @@ package com.persons.finder.presentation
 
 import com.persons.finder.config.JacksonConfig
 import com.persons.finder.data.Person
+import com.persons.finder.domain.services.NearbyPersonResult
 import com.persons.finder.domain.services.PersonNotFoundException
 import com.persons.finder.domain.services.PersonsService
 import org.junit.jupiter.api.Nested
@@ -16,6 +17,7 @@ import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 
@@ -86,6 +88,79 @@ class PersonControllerTest @Autowired constructor(
                 status { isBadRequest() }
                 jsonPath("$['location.latitude']") { exists() }
             }
+        }
+
+    }
+
+    @Nested
+    inner class FindNearby {
+
+        @Test
+        fun `returns 200 with person details closest first`() {
+            `when`(personsService.findNearby(latitude = 10.0, longitude = 10.0, radiusKm = 10.0))
+                .thenReturn(
+                    listOf(
+                        NearbyPersonResult(Person(id = 1, name = "Alice", jobTitle = "Developer"), 1.1),
+                        NearbyPersonResult(Person(id = 2, name = "Bob", jobTitle = null), 5.5)
+                    )
+                )
+
+            mockMvc.get("/api/v1/persons/nearby") {
+                param("lat", "10.0")
+                param("lon", "10.0")
+                param("radiusKm", "10.0")
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].id") { value(1) }
+                jsonPath("$[0].name") { value("Alice") }
+                jsonPath("$[0].jobTitle") { value("Developer") }
+                jsonPath("$[0].distanceKm") { value(1.1) }
+                jsonPath("$[1].id") { value(2) }
+                jsonPath("$[1].name") { value("Bob") }
+            }
+        }
+
+        // Routing: BindException (query DTO validation) -> 400 field map
+        @Test
+        fun `rejects an out-of-range latitude`() {
+            mockMvc.get("/api/v1/persons/nearby") {
+                param("lat", "91.0")
+                param("lon", "0.0")
+                param("radiusKm", "5.0")
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.lat") { exists() }
+            }
+
+            verifyNoInteractions(personsService)
+        }
+
+        // Routing: query binding failure inside BindException -> 400
+        @Test
+        fun `rejects a non-numeric radius`() {
+            mockMvc.get("/api/v1/persons/nearby") {
+                param("lat", "0.0")
+                param("lon", "0.0")
+                param("radiusKm", "abc")
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.radiusKm") { exists() }
+            }
+        }
+
+        @Test
+        fun `rejects a radius above the maximum`() {
+            mockMvc.get("/api/v1/persons/nearby") {
+                param("lat", "0.0")
+                param("lon", "0.0")
+                param("radiusKm", "999999")
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.radiusKm") { exists() }
+            }
+
+            verifyNoInteractions(personsService)
         }
 
     }

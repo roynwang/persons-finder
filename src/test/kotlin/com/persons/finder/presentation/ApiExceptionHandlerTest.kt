@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.mock.http.MockHttpInputMessage
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.BeanPropertyBindingResult
+import org.springframework.validation.BindException
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -33,6 +34,31 @@ class ApiExceptionHandlerTest {
 
         assertEquals(listOf("must not be blank", "size must be between 0 and 128"), result["name"])
         assertEquals(listOf("must be less than or equal to 90.0"), result["location.latitude"])
+    }
+
+    @Test
+    fun `query binding failures use the type-mismatch message, validation keeps its own`() {
+        val binding = BeanPropertyBindingResult(Any(), "request")
+        binding.addError(FieldError("request", "radiusKm", "abc", true, null, null, "Failed to convert"))
+        binding.addError(FieldError("request", "lat", "must be less than or equal to 90.0"))
+
+        val result = handler.handleBind(BindException(binding))
+
+        assertEquals(listOf("invalid value for expected type"), result["radiusKm"])
+        assertEquals(listOf("must be less than or equal to 90.0"), result["lat"])
+    }
+
+    @Test
+    fun `a field that both fails conversion and trips not-null collapses to one message`() {
+        // A non-numeric radiusKm binds as null, so the binding failure and the
+        // @NotNull violation both land on the same field.
+        val binding = BeanPropertyBindingResult(Any(), "request")
+        binding.addError(FieldError("request", "radiusKm", "abc", true, null, null, "Failed to convert"))
+        binding.addError(FieldError("request", "radiusKm", null, false, null, null, "must not be null"))
+
+        val result = handler.handleBind(BindException(binding))
+
+        assertEquals(listOf("invalid value for expected type"), result["radiusKm"])
     }
 
     @Test

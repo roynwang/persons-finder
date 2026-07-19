@@ -14,4 +14,16 @@ interface PersonsService {
      * @throws PersonNotFoundException if the person does not exist
      */
     fun updateLocation(id: Long, latitude: Double, longitude: Double)
+
+    /**
+     * Finds persons with a known location within radiusKm of the point,
+     * each with their details and distance, closest first.
+     */
+    fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPersonResult>
 }
+
+/** A person paired with their distance from a query point. */
+data class NearbyPersonResult(
+    val person: Person,
+    val distanceKm: Double
+)

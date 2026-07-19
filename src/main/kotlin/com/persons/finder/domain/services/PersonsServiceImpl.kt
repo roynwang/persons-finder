@@ -35,6 +35,15 @@ class PersonsServiceImpl(
         locationsService.addLocation(Location(person.id, latitude, longitude))
     }
 
+    @Transactional(readOnly = true)
+    override fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPersonResult> {
+        val nearby = locationsService.findAround(latitude, longitude, radiusKm)
+        // Batch-load the persons in one query, then re-attach in the
+        // distance-sorted order (findAllById does not preserve it).
+        val byId = personRepository.findAllById(nearby.map { it.personId }).associateBy { it.id }
+        return nearby.mapNotNull { hit -> byId[hit.personId]?.let { NearbyPersonResult(it, hit.distanceKm) } }
+    }
+
 }
 
 class PersonNotFoundException(id: Long) : RuntimeException("Person $id not found")
