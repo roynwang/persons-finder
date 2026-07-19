@@ -6,6 +6,7 @@ import com.persons.finder.domain.services.LocationsService
 import com.persons.finder.domain.services.PersonsService
 import com.persons.finder.presentation.dto.CreatePersonRequest
 import com.persons.finder.presentation.dto.CreatePersonResponse
+import com.persons.finder.presentation.dto.LocationDto
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -13,7 +14,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -27,11 +30,6 @@ class PersonController(
     private val personsService: PersonsService,
     private val locationsService: LocationsService
 ) {
-
-    /*
-        TODO PUT API to update/create someone's location using latitude and longitude
-        (JSON) Body
-     */
 
     /*
         TODO GET API to retrieve people around query location with a radius in KM, Use query param for radius.
@@ -82,6 +80,35 @@ class PersonController(
             )
         )
         return CreatePersonResponse(person.id)
+    }
+
+    @Operation(
+        summary = "Update a person's location",
+        description = "Creates or replaces the person's current location."
+    )
+    @ApiResponse(responseCode = "204", description = "Location updated")
+    @ApiResponse(
+        responseCode = "400",
+        description = "Validation failure, one entry per invalid field",
+        content = [Content(examples = [ExampleObject(value = """{"latitude": ["must be less than or equal to 90.0"]}""")])]
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Person does not exist",
+        content = [Content(examples = [ExampleObject(value = """{"error": "Person 1 not found"}""")])]
+    )
+    @PutMapping("/{id}/location")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    fun updateLocation(@PathVariable id: Long, @Valid @RequestBody request: LocationDto) {
+        val person = personsService.getById(id)
+        locationsService.addLocation(
+            Location(
+                personId = person.id,
+                latitude = request.latitude,
+                longitude = request.longitude
+            )
+        )
     }
 
 }

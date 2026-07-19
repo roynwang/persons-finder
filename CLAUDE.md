@@ -51,10 +51,12 @@ classes.
   constraints (FKs, upsert-by-PK). See `PersonRepositoryTest`,
   `LocationRepositoryTest`.
 - **Controller / web** — `@SpringBootTest` + MockMvc, `@Transactional` for
-  rollback between tests. Cover status codes, response body, request validation
-  and error-response shape — plus a light wiring check that a write reached the
-  DB. Do **not** re-assert field-level persistence here (that's the repository
-  test's job). See `PersonControllerTest`.
+  rollback between tests, one `@Nested` inner class per endpoint. Cover status
+  codes, response body, request validation and error-response shape — plus a
+  light wiring check that a write reached the DB. Do **not** re-assert
+  field-level persistence here (that's the repository test's job), and keep one
+  representative routing test per error path (the error-body logic itself is
+  `ApiExceptionHandlerTest`'s job). See `PersonControllerTest`.
 - **E2E** — curl-style Hurl scenarios in `e2e/tests/*.hurl`, one self-contained
   file per feature; `{{base_url}}` is provided by `e2e/run.sh`. See
   `e2e/README.md`.

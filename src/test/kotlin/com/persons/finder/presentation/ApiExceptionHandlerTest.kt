@@ -57,6 +57,17 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
+    fun `path parameter type mismatch reports the parameter name`() {
+        val ex = org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+            "abc", Long::class.java, "id", anyMethodParameter(), NumberFormatException("abc")
+        )
+
+        val result = handler.handleTypeMismatch(ex)
+
+        assertEquals(mapOf("id" to listOf("invalid value for expected type")), result)
+    }
+
+    @Test
     fun `person not found reports the id`() {
         val result = handler.handleNotFound(PersonNotFoundException(7))
 
