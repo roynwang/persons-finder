@@ -59,6 +59,26 @@ Unit tests and the plain e2e suite run in CI on every push; the LLM suites are
 local-only and are skipped automatically when `GEMINI_API_KEY` is not set.
 See [e2e/README.md](e2e/README.md) for how to write new e2e scenarios.
 
+### Test architecture
+
+The guiding rule: **test each layer at the layer, not through the one above it**,
+and don't repeat an assertion across layers. Unit tests never touch a database
+(not even H2) — every collaborator is mocked, so the tests stay fast and
+deterministic. Real persistence is exercised in exactly one place: the e2e suite,
+against real PostgreSQL.
+
+- **Service** — pure unit tests with mocked repositories (Mockito); cover logic
+  and branches, not persistence.
+- **Controller** — `@WebMvcTest` slice with mocked services; cover status codes,
+  response body, validation, and error shape.
+- **Repository** — no DB-backed unit tests; correctness is proven via the API in
+  e2e. The one exception is the hand-written native `findNearby` query, pinned by
+  a no-DB change-detector so an unreviewed edit fails fast.
+- **E2E** — Hurl scenarios against the compose stack; owns all persistence
+  coverage.
+- **Eval** — the non-deterministic LLM bio is checked with an LLM-as-judge eval
+  rather than exact matching.
+
 ---
 
 ## 📖 API documentation
