@@ -34,15 +34,23 @@ class ApiExceptionHandler {
      * as the nearby search). Body validation raises the more specific
      * MethodArgumentNotValidException handled above; this catches the plain
      * BindException thrown by model-attribute binding. Same field -> messages
-     * shape; conversion failures get the standard type-mismatch message.
+     * shape.
      */
     @ExceptionHandler(BindException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleBind(ex: BindException): Map<String, List<String?>> {
         return ex.bindingResult.fieldErrors
-            .groupBy({ it.field }, {
-                if (it.isBindingFailure) "invalid value for expected type" else it.defaultMessage
-            })
+            .groupBy { it.field }
+            .mapValues { (_, errors) ->
+                // A field that fails type conversion is left null, which also
+                // trips @NotNull. Report only the conversion message so the
+                // response isn't a self-contradictory pair.
+                if (errors.any { it.isBindingFailure }) {
+                    listOf("invalid value for expected type")
+                } else {
+                    errors.map { it.defaultMessage }
+                }
+            }
     }
 
     /**

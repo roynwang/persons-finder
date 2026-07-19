@@ -24,7 +24,12 @@ data class NearbySearchRequest(
 
     @field:NotNull
     @field:Positive
-    @field:Schema(description = "Search radius in kilometres", example = "10.0", required = true)
+    @field:DecimalMax("20000.0")
+    @field:Schema(
+        description = "Search radius in kilometres (max 20000, roughly half the Earth's circumference)",
+        example = "10.0",
+        required = true
+    )
     val radiusKm: Double?
 )
 

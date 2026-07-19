@@ -141,6 +141,20 @@ class PersonControllerTest @Autowired constructor(
             }
         }
 
+        @Test
+        fun `rejects a radius above the maximum`() {
+            mockMvc.get("/api/v1/persons/nearby") {
+                param("lat", "0.0")
+                param("lon", "0.0")
+                param("radiusKm", "999999")
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.radiusKm") { exists() }
+            }
+
+            verifyNoInteractions(personsService)
+        }
+
     }
 
     @Nested

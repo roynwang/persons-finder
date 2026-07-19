@@ -49,10 +49,15 @@ classes.
 - **Service** — pure unit tests with mocked repositories (Mockito). Cover logic
   and branches (e.g. not-found throwing), not persistence. See
   `*ServiceImplTest`.
-- **Repository / persistence** — no unit tests. Schema constraints, entity↔
-  table mapping, and query correctness (including native SQL) are exercised
-  through the API by the e2e suite against real PostgreSQL, so every repository
-  behavior needs an observable e2e scenario.
+- **Repository / persistence** — no DB-backed unit tests. Schema constraints,
+  entity↔table mapping, and query correctness (including native SQL) are
+  exercised through the API by the e2e suite against real PostgreSQL, so every
+  repository behavior needs an observable e2e scenario. The one exception is a
+  hand-written native `@Query`: pin its text with a no-DB change-detector
+  (reflect the annotation string, compare to a checked-in copy — see
+  `LocationRepositoryTest`) so an unreviewed edit fails fast. That guards the
+  query *text*, not its execution; dialect/mapping correctness still lives in
+  e2e.
 - **Controller / web** — `@WebMvcTest` slice with `@MockBean` services
   (`@Import(JacksonConfig::class)` to keep strict number coercion), one
   `@Nested` inner class per endpoint. Cover status codes, response body,

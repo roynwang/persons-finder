@@ -94,6 +94,21 @@ class LocationsServiceImplTest {
         )
     }
 
+    @Test
+    fun `findAround searches all longitudes when the circle reaches over a pole`() {
+        stubFindNearby(emptyList())
+
+        // 89.95°N with a 10 km radius reaches ~4.5 km past the pole; cos(lat) is
+        // small but nonzero, so only the pole-reaching check catches this. A far
+        // meridian (e.g. lon 180) must not be excluded by the longitude window.
+        service.findAround(latitude = 89.95, longitude = 0.0, radiusInKm = 10.0)
+
+        verify(locationRepository).findNearby(
+            eq(89.95), eq(0.0), eq(10.0),
+            anyDouble(), eq(90.0), eq(-180.0), eq(180.0)
+        )
+    }
+
     private fun stubFindNearby(rows: List<NearbyLocationProjection>) {
         `when`(
             locationRepository.findNearby(

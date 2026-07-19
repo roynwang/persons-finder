@@ -85,3 +85,9 @@ GET {{base_url}}/api/v1/persons/nearby?lat=0&lon=0&radiusKm=0
 HTTP 400
 [Asserts]
 jsonpath "$.radiusKm" exists
+
+# An absurdly large radius is rejected (capped to avoid whole-table scans)
+GET {{base_url}}/api/v1/persons/nearby?lat=0&lon=0&radiusKm=999999
+HTTP 400
+[Asserts]
+jsonpath "$.radiusKm" exists

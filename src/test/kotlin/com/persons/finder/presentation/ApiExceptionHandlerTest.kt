@@ -49,6 +49,19 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
+    fun `a field that both fails conversion and trips not-null collapses to one message`() {
+        // A non-numeric radiusKm binds as null, so the binding failure and the
+        // @NotNull violation both land on the same field.
+        val binding = BeanPropertyBindingResult(Any(), "request")
+        binding.addError(FieldError("request", "radiusKm", "abc", true, null, null, "Failed to convert"))
+        binding.addError(FieldError("request", "radiusKm", null, false, null, null, "must not be null"))
+
+        val result = handler.handleBind(BindException(binding))
+
+        assertEquals(listOf("invalid value for expected type"), result["radiusKm"])
+    }
+
+    @Test
     fun `type mismatch reports the full field path`() {
         val cause = MismatchedInputException.from(null as JsonParser?, Double::class.java, "not a number")
         cause.prependPath(LocationDto::class.java, "latitude")

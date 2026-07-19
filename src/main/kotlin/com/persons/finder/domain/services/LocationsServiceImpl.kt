@@ -32,13 +32,20 @@ class LocationsServiceImpl(
         val minLat = max(latitude - degreeDelta, -90.0)
         val maxLat = min(latitude + degreeDelta, 90.0)
 
-        // Longitude degrees shrink toward the poles; at a pole, or when the box
-        // would cross the antimeridian, fall back to the full longitude range.
+        // Longitude degrees shrink toward the poles, so the longitude half-width
+        // is the latitude half-width scaled by 1/cos(lat).
         val cosLat = cos(Math.toRadians(latitude))
         val lonDelta = if (cosLat > MIN_COS_LATITUDE) degreeDelta / cosLat else FULL_LON_RANGE
-        val crossesAntimeridian = longitude - lonDelta < -180.0 || longitude + lonDelta > 180.0
-        val minLon = if (crossesAntimeridian) -180.0 else longitude - lonDelta
-        val maxLon = if (crossesAntimeridian) 180.0 else longitude + lonDelta
+
+        // A circle that reaches a pole, spans at least half the globe in
+        // longitude, or wraps past ±180 covers every meridian, so no single
+        // longitude BETWEEN range can hold it — search the full range. This
+        // sacrifices the index prefilter for these queries; the eventual
+        // PostGIS migration removes the bounding box entirely.
+        val allLongitudes = maxLat >= 90.0 || minLat <= -90.0 || lonDelta >= 180.0 ||
+            longitude - lonDelta < -180.0 || longitude + lonDelta > 180.0
+        val minLon = if (allLongitudes) -180.0 else longitude - lonDelta
+        val maxLon = if (allLongitudes) 180.0 else longitude + lonDelta
 
         return locationRepository
             .findNearby(latitude, longitude, radiusInKm, minLat, maxLat, minLon, maxLon)
