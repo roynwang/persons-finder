@@ -7,10 +7,16 @@
 #
 #   BASE_URL=...  target another host (default http://localhost:${APP_PORT:-8080})
 #   SKIP_STACK=1  assume the stack is already running
+#   E2E_LLM=1     also run e2e/tests-llm (real Gemini; needs GEMINI_API_KEY in .env)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BASE_URL=${BASE_URL:-http://localhost:${APP_PORT:-8080}}
+
+if [[ "${E2E_LLM:-0}" == "1" ]] && ! grep -qE '^GEMINI_API_KEY=.+' .env 2>/dev/null; then
+  echo "E2E_LLM=1 requires GEMINI_API_KEY to be set in .env" >&2
+  exit 1
+fi
 
 if [[ "${SKIP_STACK:-0}" != "1" ]]; then
   docker compose up -d --build --wait
@@ -28,7 +34,12 @@ for i in {1..30}; do
 done
 
 files=("$@")
-[[ ${#files[@]} == 0 ]] && files=(e2e/tests/*.hurl)
+if [[ ${#files[@]} == 0 ]]; then
+  files=(e2e/tests/*.hurl)
+  # The real-LLM scenarios live outside e2e/tests so the default glob (and CI)
+  # never picks them up.
+  [[ "${E2E_LLM:-0}" == "1" ]] && files+=(e2e/tests-llm/*.hurl)
+fi
 
 exec hurl --test \
   --variable base_url="$BASE_URL" \

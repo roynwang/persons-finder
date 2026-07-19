@@ -21,5 +21,8 @@ data class Person(
     val jobTitle: String? = null,
 
     @Column(length = 512)
-    val hobbies: String? = null
+    val hobbies: String? = null,
+
+    @Column(length = 1024)
+    val bio: String? = null
 )

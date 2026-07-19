@@ -40,3 +40,30 @@ tasks.withType<KotlinCompile> {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+// LLM eval suite: exercises the real Gemini API (needs GEMINI_API_KEY).
+// Separate source set so it never runs as part of `test`/`check`/CI.
+sourceSets {
+	create("eval") {
+		compileClasspath += sourceSets["main"].output
+		runtimeClasspath += sourceSets["main"].output
+	}
+}
+
+configurations["evalImplementation"].extendsFrom(
+	configurations["implementation"],
+	configurations["testImplementation"]
+)
+configurations["evalRuntimeOnly"].extendsFrom(configurations["testRuntimeOnly"])
+
+tasks.register<Test>("eval") {
+	description = "Runs the LLM eval suite against the real Gemini API (reads GEMINI_API_KEY)."
+	group = "verification"
+	testClassesDirs = sourceSets["eval"].output.classesDirs
+	classpath = sourceSets["eval"].runtimeClasspath
+	outputs.upToDateWhen { false } // always re-run: the model's output changes
+	testLogging {
+		events("passed", "failed", "skipped")
+		showStandardStreams = true // print the generated bios for human review
+	}
+}

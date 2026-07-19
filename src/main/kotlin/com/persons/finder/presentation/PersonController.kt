@@ -1,12 +1,14 @@
 package com.persons.finder.presentation
 
 import com.persons.finder.data.Person
+import com.persons.finder.domain.services.BioEnrichmentService
 import com.persons.finder.domain.services.PersonsService
 import com.persons.finder.presentation.dto.CreatePersonRequest
 import com.persons.finder.presentation.dto.CreatePersonResponse
 import com.persons.finder.presentation.dto.LocationDto
 import com.persons.finder.presentation.dto.NearbyPersonDto
 import com.persons.finder.presentation.dto.NearbySearchRequest
+import com.persons.finder.presentation.dto.PersonDto
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
@@ -28,7 +30,8 @@ import javax.validation.Valid
 @RequestMapping("api/v1/persons")
 @Tag(name = "Persons", description = "Manage persons and their locations")
 class PersonController(
-    private val personsService: PersonsService
+    private val personsService: PersonsService,
+    private val bioEnrichmentService: BioEnrichmentService
 ) {
 
     /*
@@ -41,7 +44,8 @@ class PersonController(
     @Operation(
         summary = "Create a person",
         description = "Creates a person with an initial location and returns the generated id. " +
-            "Name and location are required; job title and hobbies are optional."
+            "Name and location are required; job title and hobbies are optional. " +
+            "An AI bio is generated asynchronously afterwards and appears on GET /persons/{id} once ready."
     )
     @ApiResponse(
         responseCode = "201",
@@ -65,7 +69,36 @@ class PersonController(
             latitude = request.location.latitude,
             longitude = request.location.longitude
         )
+        // After createWithLocation returns, its transaction has committed, so the
+        // background worker can safely read the person row.
+        bioEnrichmentService.enrichAsync(person.id)
         return CreatePersonResponse(person.id)
+    }
+
+    @Operation(
+        summary = "Get a person",
+        description = "Returns the person's profile. The bio is AI-generated in the background " +
+            "after creation and is null until generation completes (or when generation is disabled)."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "The person",
+        content = [Content(examples = [ExampleObject(value = """{"id": 1, "name": "John Doe", "jobTitle": "Developer", "hobbies": "chess, hiking", "bio": "John is a developer who..."}""")])]
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid id",
+        content = [Content(examples = [ExampleObject(value = """{"id": ["invalid value for expected type"]}""")])]
+    )
+    @ApiResponse(
+        responseCode = "404",
+        description = "Person does not exist",
+        content = [Content(examples = [ExampleObject(value = """{"error": "Person 1 not found"}""")])]
+    )
+    @GetMapping("/{id}")
+    fun getPerson(@PathVariable id: Long): PersonDto {
+        val person = personsService.getById(id)
+        return PersonDto(person.id, person.name, person.jobTitle, person.hobbies, person.bio)
     }
 
     @Operation(

@@ -2,6 +2,7 @@ package com.persons.finder.presentation
 
 import com.persons.finder.config.JacksonConfig
 import com.persons.finder.data.Person
+import com.persons.finder.domain.services.BioEnrichmentService
 import com.persons.finder.domain.services.NearbyPersonResult
 import com.persons.finder.domain.services.PersonNotFoundException
 import com.persons.finder.domain.services.PersonsService
@@ -37,6 +38,9 @@ class PersonControllerTest @Autowired constructor(
     @MockBean
     private lateinit var personsService: PersonsService
 
+    @MockBean
+    private lateinit var bioEnrichmentService: BioEnrichmentService
+
     @Nested
     inner class CreatePerson {
 
@@ -62,6 +66,7 @@ class PersonControllerTest @Autowired constructor(
             }
 
             verify(personsService).createWithLocation(toCreate, latitude = -36.8485, longitude = 174.7633)
+            verify(bioEnrichmentService).enrichAsync(42)
         }
 
         // Routing: MethodArgumentNotValidException -> 400 field map
@@ -76,6 +81,7 @@ class PersonControllerTest @Autowired constructor(
             }
 
             verifyNoInteractions(personsService)
+            verifyNoInteractions(bioEnrichmentService)
         }
 
         // Routing: strict coercion -> HttpMessageNotReadableException -> 400
@@ -88,6 +94,51 @@ class PersonControllerTest @Autowired constructor(
                 status { isBadRequest() }
                 jsonPath("$['location.latitude']") { exists() }
             }
+        }
+
+    }
+
+    @Nested
+    inner class GetPerson {
+
+        @Test
+        fun `returns 200 with the full profile including the bio`() {
+            `when`(personsService.getById(7)).thenReturn(
+                Person(id = 7, name = "Alice", jobTitle = "Developer", hobbies = "chess", bio = "Alice is a developer.")
+            )
+
+            mockMvc.get("/api/v1/persons/7").andExpect {
+                status { isOk() }
+                jsonPath("$.id") { value(7) }
+                jsonPath("$.name") { value("Alice") }
+                jsonPath("$.jobTitle") { value("Developer") }
+                jsonPath("$.hobbies") { value("chess") }
+                jsonPath("$.bio") { value("Alice is a developer.") }
+            }
+
+            verify(personsService).getById(7)
+        }
+
+        // Routing: PersonNotFoundException -> 404
+        @Test
+        fun `returns 404 for an unknown person`() {
+            `when`(personsService.getById(999999)).thenThrow(PersonNotFoundException(999999))
+
+            mockMvc.get("/api/v1/persons/999999").andExpect {
+                status { isNotFound() }
+                jsonPath("$.error") { exists() }
+            }
+        }
+
+        // Routing: MethodArgumentTypeMismatchException -> 400
+        @Test
+        fun `rejects a non-numeric person id`() {
+            mockMvc.get("/api/v1/persons/abc").andExpect {
+                status { isBadRequest() }
+                jsonPath("$.id") { exists() }
+            }
+
+            verifyNoInteractions(personsService)
         }
 
     }
