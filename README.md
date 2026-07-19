@@ -77,6 +77,16 @@ Both suites also run in CI on every push (`.github/workflows/ci.yml`).
 
 ---
 
+## 📖 API documentation
+
+Interactive docs are generated automatically from the controllers by
+[springdoc-openapi](https://springdoc.org/). With the stack running (`make up`):
+
+- Swagger UI: <http://localhost:8080/swagger-ui/index.html> (`make docs` opens it)
+- OpenAPI spec (JSON): <http://localhost:8080/v3/api-docs>
+
+---
+
 ## ✅ Getting Started
 
 Clone this repo and push your solution to your own public repository.
