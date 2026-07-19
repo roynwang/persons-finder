@@ -3,6 +3,8 @@
 Backend for a mobile app that helps users find people around them.
 Kotlin + Spring Boot + PostgreSQL, run via Docker Compose.
 
+📄 See also: [AI_LOG.md](AI_LOG.md) — how I worked with AI · [SECURITY.md](SECURITY.md) — prompt injection & PII.
+
 REST API (base path `/api/v1/persons`):
 
 - `POST /persons` — create a person; generates a short, quirky AI bio from their
