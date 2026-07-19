@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: gradle
+      - name: Run unit tests
+        run: ./gradlew test --no-daemon
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: build/reports/tests/test
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install hurl
+        run: |
+          curl -sLO https://github.com/Orange-OpenSource/hurl/releases/download/8.0.1/hurl_8.0.1_amd64.deb
+          sudo dpkg -i hurl_8.0.1_amd64.deb
+      - name: Create .env from template
+        run: cp .env.example .env
+      - name: Run e2e suite
+        run: ./e2e/run.sh
+      - name: Show stack logs on failure
+        if: failure()
+        run: docker compose logs db app | tail -100
+      - name: Upload e2e report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: e2e/report

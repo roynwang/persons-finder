@@ -62,6 +62,21 @@ In the `POST /persons` endpoint, you are sending user input to an LLM.
 
 ---
 
+## 🧪 Running tests
+
+Prerequisites: Docker running, `brew install hurl`, and a `.env` file (`cp .env.example .env`).
+
+```bash
+make test   # unit tests (in Docker — no local JDK needed)
+make e2e    # build + start stack, run the Hurl e2e suite
+```
+
+Run `make` to list all targets (`up`, `down`, `logs`, `psql`, ...).
+See [e2e/README.md](e2e/README.md) for how to write new e2e scenarios.
+Both suites also run in CI on every push (`.github/workflows/ci.yml`).
+
+---
+
 ## ✅ Getting Started
 
 Clone this repo and push your solution to your own public repository.
