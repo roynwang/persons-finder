@@ -42,6 +42,14 @@ POST {{base_url}}/api/v1/persons
 
 HTTP 400
 
+# Location is required
+POST {{base_url}}/api/v1/persons
+{
+  "name": "No Location"
+}
+
+HTTP 400
+
 # A numeric field sent as a string is rejected (strict typing, not coerced)
 POST {{base_url}}/api/v1/persons
 {

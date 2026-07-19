@@ -18,10 +18,11 @@ import org.springframework.test.web.servlet.put
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * Web-layer concerns: status codes, response body, request validation and the
- * error-response shape, one @Nested class per endpoint. Persistence mapping is
- * covered by the *RepositoryTest classes, service logic by *ServiceImplTest,
- * and error-body construction by ApiExceptionHandlerTest.
+ * Web-layer concerns only, one @Nested class per endpoint: happy path (with a
+ * light wiring check) plus ONE representative routing test per distinct error
+ * path. Error-body logic lives in ApiExceptionHandlerTest, domain rules in
+ * *ServiceImplTest, persistence in *RepositoryTest, full request coverage in
+ * the e2e scenarios.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -57,16 +58,7 @@ class PersonControllerTest @Autowired constructor(
             assertTrue(locationRepository.existsById(id), "location row should exist")
         }
 
-        @Test
-        fun `succeeds without optional fields`() {
-            mockMvc.post("/api/v1/persons") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """{ "name": "Minimal", "location": { "latitude": 0.0, "longitude": 0.0 } }"""
-            }.andExpect {
-                status { isCreated() }
-            }
-        }
-
+        // Routing: MethodArgumentNotValidException -> 400 field map
         @Test
         fun `rejects a blank name with a field error`() {
             mockMvc.post("/api/v1/persons") {
@@ -78,17 +70,7 @@ class PersonControllerTest @Autowired constructor(
             }
         }
 
-        @Test
-        fun `rejects an out-of-range latitude`() {
-            mockMvc.post("/api/v1/persons") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """{ "name": "Bad Lat", "location": { "latitude": 91.0, "longitude": 0.0 } }"""
-            }.andExpect {
-                status { isBadRequest() }
-                jsonPath("$['location.latitude']") { exists() }
-            }
-        }
-
+        // Routing: strict coercion -> HttpMessageNotReadableException -> 400
         @Test
         fun `rejects a numeric value sent as a string`() {
             mockMvc.post("/api/v1/persons") {
@@ -97,16 +79,6 @@ class PersonControllerTest @Autowired constructor(
             }.andExpect {
                 status { isBadRequest() }
                 jsonPath("$['location.latitude']") { exists() }
-            }
-        }
-
-        @Test
-        fun `rejects a missing location`() {
-            mockMvc.post("/api/v1/persons") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """{ "name": "No Location" }"""
-            }.andExpect {
-                status { isBadRequest() }
             }
         }
 
@@ -131,6 +103,7 @@ class PersonControllerTest @Autowired constructor(
             assertEquals(-0.1278, location.longitude)
         }
 
+        // Routing: PersonNotFoundException -> 404
         @Test
         fun `returns 404 for an unknown person`() {
             mockMvc.put("/api/v1/persons/999999/location") {
@@ -142,19 +115,7 @@ class PersonControllerTest @Autowired constructor(
             }
         }
 
-        @Test
-        fun `rejects an out-of-range longitude`() {
-            val id = createPerson("Bad Lon")
-
-            mockMvc.put("/api/v1/persons/$id/location") {
-                contentType = MediaType.APPLICATION_JSON
-                content = """{ "latitude": 0.0, "longitude": 181.0 }"""
-            }.andExpect {
-                status { isBadRequest() }
-                jsonPath("$.longitude") { exists() }
-            }
-        }
-
+        // Routing: MethodArgumentTypeMismatchException -> 400
         @Test
         fun `rejects a non-numeric person id`() {
             mockMvc.put("/api/v1/persons/abc/location") {
