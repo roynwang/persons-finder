@@ -15,8 +15,7 @@ the model.
 The most important defence is **not** the prompt — it's controlling what data
 the model can reach. Injection only bites when a steered model can *act*: fetch
 rows, call a tool, or return data the user wasn't allowed to see. So every
-LLM-driven query should be scoped to the requesting principal (a user/tenant id
-+ permission), enforced at the data layer — then even a successful injection
+LLM-driven query should be scoped to the requesting principal (a user/tenant id + permission), enforced at the data layer — then even a successful injection
 stays inside the caller's own data.
 
 In this project the LLM has no tool or database access — it only receives the
