@@ -40,3 +40,6 @@ build/
 
 # Local environment (use .env.example as template)
 .env
+
+# E2E test reports
+e2e/report/
