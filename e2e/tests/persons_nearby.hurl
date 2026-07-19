@@ -6,6 +6,7 @@
 POST {{base_url}}/api/v1/persons
 {
   "name": "Nearby Center",
+  "jobTitle": "Explorer",
   "location": { "latitude": 10.0, "longitude": -42.0 }
 }
 
@@ -44,6 +45,10 @@ jsonpath "$[*].id" contains {{center_id}}
 jsonpath "$[*].id" contains {{close_id}}
 jsonpath "$[*].id" not contains {{outside_id}}
 jsonpath "$[0].distanceKm" < 0.1
+# Details come through — assert on this run's own row (the shared DB holds
+# same-named rows from earlier runs), selected by its captured id.
+jsonpath "$[?(@.id=={{center_id}})].name" contains "Nearby Center"
+jsonpath "$[?(@.id=={{center_id}})].jobTitle" contains "Explorer"
 
 # Moving a person is reflected by the search (location upsert end-to-end):
 # the far person moves to ~0.1 km from the query point...

@@ -35,8 +35,13 @@ class PersonsServiceImpl(
         locationsService.addLocation(Location(person.id, latitude, longitude))
     }
 
-    override fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPerson> {
-        return locationsService.findAround(latitude, longitude, radiusKm)
+    @Transactional(readOnly = true)
+    override fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPersonResult> {
+        val nearby = locationsService.findAround(latitude, longitude, radiusKm)
+        // Batch-load the persons in one query, then re-attach in the
+        // distance-sorted order (findAllById does not preserve it).
+        val byId = personRepository.findAllById(nearby.map { it.personId }).associateBy { it.id }
+        return nearby.mapNotNull { hit -> byId[hit.personId]?.let { NearbyPersonResult(it, hit.distanceKm) } }
     }
 
 }

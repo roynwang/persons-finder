@@ -68,11 +68,21 @@ class PersonsServiceImplTest {
     }
 
     @Test
-    fun `findNearby delegates to the locations service`() {
-        val nearby = listOf(NearbyPerson(personId = 3, distanceKm = 0.5))
-        `when`(locationsService.findAround(1.0, 2.0, 10.0)).thenReturn(nearby)
+    fun `findNearby attaches person details and keeps distance order`() {
+        val near = Person(id = 3, name = "Near", jobTitle = "Dev")
+        val far = Person(id = 1, name = "Far", jobTitle = null)
+        `when`(locationsService.findAround(1.0, 2.0, 10.0)).thenReturn(
+            listOf(NearbyPerson(personId = 3, distanceKm = 0.5), NearbyPerson(personId = 1, distanceKm = 4.0))
+        )
+        // Returned out of order to prove the service re-sorts by distance.
+        `when`(personRepository.findAllById(listOf(3L, 1L))).thenReturn(listOf(far, near))
 
-        assertEquals(nearby, service.findNearby(latitude = 1.0, longitude = 2.0, radiusKm = 10.0))
+        val result = service.findNearby(latitude = 1.0, longitude = 2.0, radiusKm = 10.0)
+
+        assertEquals(
+            listOf(NearbyPersonResult(near, 0.5), NearbyPersonResult(far, 4.0)),
+            result
+        )
     }
 
     @Test

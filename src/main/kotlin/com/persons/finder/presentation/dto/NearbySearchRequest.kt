@@ -37,6 +37,12 @@ data class NearbyPersonDto(
     @field:Schema(description = "Id of the person")
     val id: Long,
 
+    @field:Schema(description = "Name of the person")
+    val name: String,
+
+    @field:Schema(description = "Job title of the person, if known")
+    val jobTitle: String?,
+
     @field:Schema(description = "Great-circle distance from the query point, in kilometres")
     val distanceKm: Double
 )

@@ -17,7 +17,13 @@ interface PersonsService {
 
     /**
      * Finds persons with a known location within radiusKm of the point,
-     * closest first.
+     * each with their details and distance, closest first.
      */
-    fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPerson>
+    fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPersonResult>
 }
+
+/** A person paired with their distance from a query point. */
+data class NearbyPersonResult(
+    val person: Person,
+    val distanceKm: Double
+)
