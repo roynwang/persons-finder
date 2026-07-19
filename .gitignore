@@ -37,3 +37,6 @@ build/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Local environment (use .env.example as template)
+.env

@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     container_name: persons-finder-db
     environment:
-      POSTGRES_DB: persons_finder
-      POSTGRES_USER: persons_finder
-      POSTGRES_PASSWORD: persons_finder
+      POSTGRES_DB: ${POSTGRES_DB:-persons_finder}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U persons_finder -d persons_finder"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -20,12 +20,11 @@ services:
     build: .
     container_name: persons-finder-app
     ports:
-      - "8080:8080"
-    # Uncomment once the app has the PostgreSQL driver and JPA config for it
-    # environment:
-    #   SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/persons_finder
-    #   SPRING_DATASOURCE_USERNAME: persons_finder
-    #   SPRING_DATASOURCE_PASSWORD: persons_finder
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-persons_finder}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     depends_on:
       db:
         condition: service_healthy
