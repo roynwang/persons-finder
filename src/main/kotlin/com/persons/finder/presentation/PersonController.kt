@@ -5,12 +5,16 @@ import com.persons.finder.domain.services.PersonsService
 import com.persons.finder.presentation.dto.CreatePersonRequest
 import com.persons.finder.presentation.dto.CreatePersonResponse
 import com.persons.finder.presentation.dto.LocationDto
+import com.persons.finder.presentation.dto.NearbyPersonDto
+import com.persons.finder.presentation.dto.NearbySearchRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springdoc.api.annotations.ParameterObject
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -26,14 +30,6 @@ import javax.validation.Valid
 class PersonController(
     private val personsService: PersonsService
 ) {
-
-    /*
-        TODO GET API to retrieve people around query location with a radius in KM, Use query param for radius.
-        TODO API just return a list of persons ids (JSON)
-        // Example
-        // John wants to know who is around his location within a radius of 10km
-        // API would be called using John's id and a radius 10km
-     */
 
     /*
         TODO GET API to retrieve a person or persons name using their ids
@@ -70,6 +66,28 @@ class PersonController(
             longitude = request.location.longitude
         )
         return CreatePersonResponse(person.id)
+    }
+
+    @Operation(
+        summary = "Find persons near a location",
+        description = "Returns ids of persons whose current location is within radiusKm of the " +
+            "query point, closest first, with the great-circle distance in kilometres."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Persons within the radius, closest first",
+        content = [Content(examples = [ExampleObject(value = """[{"id": 1, "distanceKm": 0.4}, {"id": 2, "distanceKm": 3.2}]""")])]
+    )
+    @ApiResponse(
+        responseCode = "400",
+        description = "Missing or invalid query parameters, one entry per invalid field",
+        content = [Content(examples = [ExampleObject(value = """{"lat": ["must be less than or equal to 90.0"]}""")])]
+    )
+    @GetMapping("/nearby")
+    fun findNearby(@Valid @ParameterObject request: NearbySearchRequest): List<NearbyPersonDto> {
+        return personsService
+            .findNearby(request.lat!!, request.lon!!, request.radiusKm!!)
+            .map { NearbyPersonDto(it.personId, it.distanceKm) }
     }
 
     @Operation(

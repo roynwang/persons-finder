@@ -35,6 +35,10 @@ class PersonsServiceImpl(
         locationsService.addLocation(Location(person.id, latitude, longitude))
     }
 
+    override fun findNearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyPerson> {
+        return locationsService.findAround(latitude, longitude, radiusKm)
+    }
+
 }
 
 class PersonNotFoundException(id: Long) : RuntimeException("Person $id not found")

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.validation.BindException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -26,6 +27,22 @@ class ApiExceptionHandler {
     fun handleValidation(ex: MethodArgumentNotValidException): Map<String, List<String?>> {
         return ex.bindingResult.fieldErrors
             .groupBy({ it.field }, { it.defaultMessage })
+    }
+
+    /**
+     * Query-parameter binding/validation failures (constructor-bound DTOs such
+     * as the nearby search). Body validation raises the more specific
+     * MethodArgumentNotValidException handled above; this catches the plain
+     * BindException thrown by model-attribute binding. Same field -> messages
+     * shape; conversion failures get the standard type-mismatch message.
+     */
+    @ExceptionHandler(BindException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleBind(ex: BindException): Map<String, List<String?>> {
+        return ex.bindingResult.fieldErrors
+            .groupBy({ it.field }, {
+                if (it.isBindingFailure) "invalid value for expected type" else it.defaultMessage
+            })
     }
 
     /**
