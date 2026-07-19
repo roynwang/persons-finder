@@ -10,8 +10,11 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
 
+// Currently backed by Gemini; the Gemini-specific wiring is confined to this
+// class and its private request/response types, so another provider can be
+// added as a sibling BioGenerator without touching callers.
 @Component
-class GeminiBioGenerator(
+class BioGeneratorImpl(
     @Qualifier("geminiRestTemplate") private val restTemplate: RestTemplate,
     @Value("\${gemini.api-key}") private val apiKey: String,
     @Value("\${gemini.model}") private val model: String,

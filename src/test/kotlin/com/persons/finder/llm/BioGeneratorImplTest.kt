@@ -21,14 +21,14 @@ import org.springframework.http.HttpMethod
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
 
-class GeminiBioGeneratorTest {
+class BioGeneratorImplTest {
 
     // A bare RestTemplate()'s ObjectMapper lacks the Kotlin module and can't
     // (de)serialize the Kotlin data classes; in production the Boot-built
     // template carries the context mapper.
     private val restTemplate = RestTemplate(listOf(MappingJackson2HttpMessageConverter(jacksonObjectMapper())))
     private val server = MockRestServiceServer.bindTo(restTemplate).build()
-    private val generator = GeminiBioGenerator(restTemplate, "test-key", "gemini-2.5-flash", "https://gemini.test")
+    private val generator = BioGeneratorImpl(restTemplate, "test-key", "gemini-2.5-flash", "https://gemini.test")
 
     private val person = Person(id = 1, name = "Jane Doe", jobTitle = "Developer", hobbies = "chess, hiking")
 
@@ -41,8 +41,8 @@ class GeminiBioGeneratorTest {
 
     @Test
     fun `is disabled when the api key is blank`() {
-        assertFalse(GeminiBioGenerator(restTemplate, "", "m", "u").enabled)
-        assertFalse(GeminiBioGenerator(restTemplate, "  ", "m", "u").enabled)
+        assertFalse(BioGeneratorImpl(restTemplate, "", "m", "u").enabled)
+        assertFalse(BioGeneratorImpl(restTemplate, "  ", "m", "u").enabled)
         assertTrue(generator.enabled)
     }
 

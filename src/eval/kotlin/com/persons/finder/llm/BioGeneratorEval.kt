@@ -33,7 +33,7 @@ class BioGeneratorEval {
         messageConverters = listOf(MappingJackson2HttpMessageConverter(jacksonObjectMapper()))
     }
 
-    private val generator = GeminiBioGenerator(restTemplate, apiKey, model, baseUrl)
+    private val generator = BioGeneratorImpl(restTemplate, apiKey, model, baseUrl)
 
     @BeforeAll
     fun requireApiKey() {
