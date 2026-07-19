@@ -1,8 +1,6 @@
 package com.persons.finder.presentation
 
-import com.persons.finder.data.Location
 import com.persons.finder.data.Person
-import com.persons.finder.domain.services.LocationsService
 import com.persons.finder.domain.services.PersonsService
 import com.persons.finder.presentation.dto.CreatePersonRequest
 import com.persons.finder.presentation.dto.CreatePersonResponse
@@ -13,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -27,8 +24,7 @@ import javax.validation.Valid
 @RequestMapping("api/v1/persons")
 @Tag(name = "Persons", description = "Manage persons and their locations")
 class PersonController(
-    private val personsService: PersonsService,
-    private val locationsService: LocationsService
+    private val personsService: PersonsService
 ) {
 
     /*
@@ -63,21 +59,15 @@ class PersonController(
     )
     @PostMapping("")
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
     fun createPerson(@Valid @RequestBody request: CreatePersonRequest): CreatePersonResponse {
-        val person = personsService.save(
+        val person = personsService.createWithLocation(
             Person(
                 name = request.name,
                 jobTitle = request.jobTitle,
                 hobbies = request.hobbies
-            )
-        )
-        locationsService.addLocation(
-            Location(
-                personId = person.id,
-                latitude = request.location.latitude,
-                longitude = request.location.longitude
-            )
+            ),
+            latitude = request.location.latitude,
+            longitude = request.location.longitude
         )
         return CreatePersonResponse(person.id)
     }
@@ -99,16 +89,8 @@ class PersonController(
     )
     @PutMapping("/{id}/location")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Transactional
     fun updateLocation(@PathVariable id: Long, @Valid @RequestBody request: LocationDto) {
-        val person = personsService.getById(id)
-        locationsService.addLocation(
-            Location(
-                personId = person.id,
-                latitude = request.latitude,
-                longitude = request.longitude
-            )
-        )
+        personsService.updateLocation(id, request.latitude, request.longitude)
     }
 
 }
