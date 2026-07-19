@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help up down clean test e2e e2e-fast logs psql
+.PHONY: help up down clean test e2e e2e-fast logs psql docs
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -23,6 +23,9 @@ e2e: ## Build + start stack, then run the Hurl e2e suite
 
 e2e-fast: ## Run e2e against the already-running stack (no rebuild)
 	SKIP_STACK=1 e2e/run.sh
+
+docs: up ## Start the stack and open Swagger UI
+	open "http://localhost:$${APP_PORT:-8080}/swagger-ui/index.html"
 
 logs: ## Tail app logs
 	docker compose logs -f app
